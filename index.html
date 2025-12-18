@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Exchange Analytics Pro</title>
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a0ca3;
+            --orange: #f59e0b;
+            --success: #10b981;
+            --danger: #ef476f;
+            --text-main: #1f2937;
+            --text-secondary: #6b7280;
+            --bg-body: #f3f4f6;
+            --bg-card: #ffffff;
+            --border: #e5e7eb;
+            --radius: 16px;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        body.dark-mode {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --primary: #6366f1;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            transition: all 0.3s ease;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-body); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid var(--border);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 15px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Header */
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px);
+            position: sticky; top: 0; z-index: 100;
+            padding: 15px 0; border-bottom: 1px solid var(--border);
+        }
+        body.dark-mode .glass-header { background: rgba(30, 41, 59, 0.85); }
+
+        .header-inner {
+            max-width: 1400px; margin: 0 auto; padding: 0 20px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .brand-box h1 { margin: 0; font-size: 1.3rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .source-badge { font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 4px; font-weight: 500;}
+
+        .btn-icon {
+            background: transparent; border: 1px solid var(--border); color: var(--text-main);
+            width: 38px; height: 38px; border-radius: 10px; cursor: pointer; transition: 0.2s;
+        }
+        .btn-icon:hover { background: var(--border); color: var(--primary); }
+        .active-lang { background: var(--primary) !important; color: white !important; border-color: var(--primary) !important; }
+
+        /* Layout */
+        .container {
+            max-width: 1400px; margin: 30px auto; padding: 0 20px;
+            display: grid; grid-template-columns: 300px 1fr; gap: 25px;
+        }
+        @media (max-width: 1024px) { .container { grid-template-columns: 1fr; } }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card); border-radius: var(--radius); padding: 20px;
+            border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 20px;
+        }
+        .form-select, .form-input {
+            width: 100%; padding: 10px; border-radius: 10px;
+            border: 1px solid var(--border); background: var(--bg-body); color: var(--text-main);
+            margin-bottom: 15px; outline: none; box-sizing: border-box;
+        }
+
+        /* Calculator Styles */
+        .calc-box {
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.05), rgba(16, 185, 129, 0.05));
+            border: 1px solid var(--border); padding: 15px; border-radius: 12px; margin-bottom: 20px;
+        }
+        .calc-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .calc-val { font-weight: bold; color: var(--text-main); }
+        .calc-profit { color: var(--success); font-size: 0.8rem; font-weight: 600; display: block; text-align: right;}
+        .calc-label { color: var(--text-secondary); }
+        
+        .input-group { position: relative; margin-bottom: 15px; }
+        .input-currency {
+            position: absolute; right: 10px; top: 10px; font-weight: bold; color: var(--primary); font-size: 0.9rem;
+        }
+
+        /* Promo */
+        .promo-card {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white; text-align: center; position: relative; overflow: hidden; padding: 25px;
+        }
+        .promo-logo { max-width: 140px; filter: brightness(0) invert(1); margin-bottom: 15px; }
+        .promo-bg {
+            position: absolute; width: 120px; height: 120px; background: rgba(255,255,255,0.1);
+            border-radius: 50%; top: -40px; right: -40px;
+        }
+        .slogan-animate { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .social-links {
+            display: flex; gap: 10px; justify-content: center; margin-top: 15px;
+        }
+        .social-btn {
+            background: rgba(255,255,255,0.2); color: white; text-decoration: none;
+            padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; transition: 0.2s;
+            display: flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,0.3);
+        }
+        .social-btn:hover { background: rgba(255,255,255,0.4); transform: translateY(-2px); }
+
+        /* KPI Stats */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px;
+        }
+        .stat-card {
+            background: var(--bg-card); padding: 20px; border-radius: var(--radius);
+            border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;
+            box-shadow: var(--shadow); position: relative; overflow: hidden;
+        }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+        .best-bank-badge { font-size: 0.8rem; background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; margin-top: 5px; display: inline-block; font-weight: 600; }
+
+        /* Charts */
+        .charts-row { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 25px; margin-bottom: 25px; transition: all 0.3s ease; }
+        @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+        .chart-box { height: 380px; position: relative; }
+
+        /* Table & Trend */
+        .table-container { overflow-x: auto; margin-top: 10px; border-radius: 12px; border: 1px solid var(--border); max-height: 500px; overflow-y: auto;}
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid var(--border); }
+        td:first-child, th:first-child { text-align: left; }
+        th { background: var(--bg-body); font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; position: sticky; top: 0; z-index: 10;}
+        th:hover { background: rgba(0,0,0,0.05); }
+        
+        .best-rate-cell { color: var(--success); font-weight: bold; }
+        .worst-rate-cell { color: var(--danger); font-weight: bold; }
+        
+        .trend-up { color: var(--danger); font-size: 0.75rem; margin-left: 4px; background: rgba(239,71,111,0.1); padding: 2px 4px; border-radius: 4px; }
+        .trend-down { color: var(--success); font-size: 0.75rem; margin-left: 4px; background: rgba(16,185,129,0.1); padding: 2px 4px; border-radius: 4px; }
+        .trend-flat { color: var(--text-secondary); font-size: 0.75rem; margin-left: 4px; }
+
+        .disclaimer-box { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: var(--text-main); font-size: 0.85rem; padding: 10px 15px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .disclaimer-box i { color: var(--orange); }
+        .footer { text-align: center; padding: 20px; margin-top: 30px; color: var(--text-secondary); font-size: 0.85rem; border-top: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+
+    <!-- Loader -->
+    <div class="loading-overlay" id="loader">
+        <div class="spinner"></div>
+        <p style="font-weight:500;">Ma'lumotlar yuklanmoqda...</p>
+    </div>
+
+    <!-- Header -->
+    <header class="glass-header">
+        <div class="header-inner">
+            <div class="brand-box">
+                <h1><i class="fa-solid fa-money-bill-transfer"></i> <span id="t-brand">Exchange Analytics</span></h1>
+                <div>
+                    <span class="source-badge">
+                        <i class="fa-solid fa-circle-info"></i> <span id="t-subtitle">Tijorat banklari valyuta kurslari monitoringi</span>
+                    </span>
+                    <span class="source-badge" style="font-size: 0.7rem; opacity: 0.7;">
+                        <i class="fa-solid fa-link"></i> <span id="t-source">Manba: Tijorat banklari rasmiy web-saytlari</span>
+                    </span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-icon" onclick="toggleTheme()" title="Mavzu"><i class="fa-solid fa-moon"></i></button>
+                <div style="display:flex; border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+                    <button class="btn-icon active-lang" onclick="setLang('uz')" id="btn-uz">UZ</button>
+                    <button class="btn-icon" style="border-left:1px solid var(--border); border-right:1px solid var(--border)" onclick="setLang('ru')" id="btn-ru">RU</button>
+                    <button class="btn-icon" onclick="setLang('en')" id="btn-en">EN</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar -->
+        <aside>
+            <div class="card">
+                <h3><i class="fa-solid fa-sliders"></i> <span id="t-filter">Filtrlash</span></h3>
+                
+                <label id="t-currency" style="font-size:0.85rem; color:var(--text-secondary)">Valyuta</label>
+                <select id="filter-currency" class="form-select" onchange="renderApp()">
+                    <option value="USD">USD - AQSH Dollar</option>
+                    <option value="EUR">EUR - Yevro</option>
+                    <option value="RUB">RUB - Rubl</option>
+                    <option value="GBP">GBP - Funt Sterling</option>
+                    <option value="JPY">JPY - Iena</option>
+                    <option value="CHF">CHF - Frank</option>
+                    <option value="KZT">KZT - Qozog'iston Tengesi</option>
+                    <option value="TRY">TRY - Turk Lirasi</option>
+                </select>
+
+                <label id="t-bank" style="font-size:0.85rem; color:var(--text-secondary)">Bank</label>
+                <select id="filter-bank" class="form-select" onchange="renderApp()">
+                    <option value="">— Barchasi —</option>
+                </select>
+
+                <label id="t-date" style="font-size:0.85rem; color:var(--text-secondary)">Davr</label>
+                <input type="date" id="filter-date-start" class="form-input" onchange="renderApp()">
+                <input type="date" id="filter-date-end" class="form-input" onchange="renderApp()">
+
+                <button class="btn-icon" style="width:100%; border-radius:8px;" onclick="resetFilters()">
+                    <i class="fa-solid fa-rotate-right"></i> <span id="t-reset">Tozalash</span>
+                </button>
+            </div>
+
+            <!-- SMART CALCULATOR -->
+            <div class="card">
+                <h3><i class="fa-solid fa-calculator"></i> <span id="t-calc-title">Foyda Kalkulyatori</span></h3>
+                <div class="input-group">
+                    <input type="text" inputmode="numeric" id="calc-input" class="form-input" value="100" placeholder="100" oninput="formatCalcInput(this)">
+                    <span class="input-currency" id="calc-curr-label">USD</span>
+                </div>
+                
+                <div class="calc-box">
+                    <div class="calc-row">
+                        <span class="calc-label" id="t-calc-sell">Agar sotsangiz:</span>
+                        <span class="calc-val" id="calc-res-sell">-</span>
+                    </div>
+                    <div class="calc-row" style="margin-bottom:0">
+                        <span style="font-size:0.75rem; color:var(--text-secondary);" id="calc-bank-sell">-</span>
+                        <span class="calc-profit" id="calc-profit-sell"></span>
+                    </div>
+                </div>
+
+                <div class="calc-box" style="margin-bottom:0">
+                    <div class="calc-row">
+                        <span class="calc-label" id="t-calc-buy">Agar olsangiz:</span>
+                        <span class="calc-val" id="calc-res-buy">-</span>
+                    </div>
+                    <div class="calc-row" style="margin-bottom:0">
+                        <span style="font-size:0.75rem; color:var(--text-secondary);" id="calc-bank-buy">-</span>
+                        <span class="calc-profit" id="calc-profit-buy"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card promo-card">
+                <div class="promo-bg"></div>
+                <img src="https://snsratings.uz/static/media/logo.b58a119151d230b7d82af1dfaf415791.svg" class="promo-logo">
+                <div style="position:relative; z-index:2;">
+                    <h4 id="t-slogan-title" style="margin:0; font-size:1rem;">Moliyaviy Yechimlar</h4>
+                    <p id="t-slogan-text" class="slogan-animate" style="font-size:0.8rem; opacity:0.9; margin-top:8px; font-style:italic;">
+                        Eng yaxshi kurs — bu tejalgan mablag'
+                    </p>
+                    
+                    <div class="social-links">
+                        <a href="https://snsratings.uz/" target="_blank" class="social-btn">
+                            <i class="fa-solid fa-globe"></i> Web
+                        </a>
+                        <a href="https://t.me/snsratings" target="_blank" class="social-btn">
+                            <i class="fa-brands fa-telegram"></i> Telegram
+                        </a>
+                    </div>
+
+                    <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.3); padding-top:10px;">
+                        <p id="t-disclaimer" style="font-size:0.85rem; color:#fef3c7; margin:0; font-weight: 500;">
+                            Kurslar kun davomidagi o'rtacha narx asosida shakllantirilgan
+                        </p>
+                        <p id="t-error-msg" style="font-size:0.8rem; color:#ffebee; margin:8px 0 0 0; font-weight: bold; background: rgba(239,71,111,0.8); padding: 4px 8px; border-radius: 6px; display: inline-block;">
+                            Ma'lumotlarda xato ko'rsangiz bizga xabar bering!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main>
+            <!-- KPI Cards -->
+            <div class="stats-grid">
+                <!-- Best Buy -->
+                <div class="stat-card">
+                    <div>
+                        <p id="t-best-buy" style="font-size:0.85rem; color:var(--text-secondary)">Eng qimmat (Siz sotasiz)</p>
+                        <h3 style="margin:5px 0; color:var(--success);" id="kpi-max-buy">0</h3>
+                        <span class="best-bank-badge" id="kpi-max-buy-bank">-</span>
+                    </div>
+                    <div class="stat-icon" style="background: rgba(16,185,129,0.1); color: var(--success);">
+                        <i class="fa-solid fa-arrow-trend-up"></i>
+                    </div>
+                </div>
+                
+                <!-- Best Sell -->
+                <div class="stat-card">
+                    <div>
+                        <p id="t-best-sell" style="font-size:0.85rem; color:var(--text-secondary)">Eng arzon (Siz olasiz)</p>
+                        <h3 style="margin:5px 0; color:var(--danger);" id="kpi-min-sell">0</h3>
+                        <span class="best-bank-badge" id="kpi-min-sell-bank">-</span>
+                    </div>
+                    <div class="stat-icon" style="background: rgba(239,71,111,0.1); color: var(--danger);">
+                        <i class="fa-solid fa-tag"></i>
+                    </div>
+                </div>
+
+                <!-- Spread -->
+                <div class="stat-card">
+                    <div>
+                        <p id="t-avg-spread" style="font-size:0.85rem; color:var(--text-secondary)">O'rtacha Spread (Farq)</p>
+                        <h3 style="margin:5px 0; color:var(--orange);" id="kpi-spread">0</h3>
+                        <span style="font-size:0.75rem; color:var(--text-secondary); opacity: 0.8;" id="t-spread-note">Mijoz foydasi uchun</span>
+                    </div>
+                    <div class="stat-icon" style="background: rgba(245,158,11,0.1); color: var(--orange);">
+                        <i class="fa-solid fa-right-left"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ID added to container for grid changes -->
+            <div class="charts-row" id="charts-row-container">
+                <!-- Trend Chart -->
+                <div class="card" id="card-chart-trend">
+                    <h4 id="t-chart-trend" style="margin:0 0 15px 0;">Kurs Dinamikasi</h4>
+                    <div class="chart-box"><canvas id="chart-trend"></canvas></div>
+                </div>
+                <!-- Comparison Bar Chart (Top 5) -->
+                <div class="card" id="card-chart-comp">
+                    <h4 id="t-chart-comp" style="margin:0 0 15px 0;">Top 5</h4>
+                    <div class="chart-box"><canvas id="chart-bar"></canvas></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h4 id="t-table-title" style="margin:0;">Batafsil Jadval</h4>
+                    <button onclick="exportTableToExcel()" class="btn-icon" style="width:auto; padding:0 15px;"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                </div>
+                <div class="table-container">
+                    <table id="rates-table"></table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="footer">
+        © 2025 Standard and Sensitive Ratings
+    </div>
+
+    <script>
+        const API_URL = "https://raw.githubusercontent.com/sunattagayev-cloud/banks_exchange_rates/refs/heads/main/banks_rates.json";
+        let rawData = [];
+        
+        const i18n = {
+            uz: {
+                brand: "Valyuta Kurslari Tahlili", subtitle: "Tijorat banklari valyuta kurslari monitoringi", source: "Manba: Tijorat banklari rasmiy web-saytlari", 
+                filter: "Filtrlash", currency: "Valyuta", bank: "Bank", date: "Davr", all: "— Barchasi —",
+                reset: "Tozalash", sloganT: "Moliyaviy Yechimlar", 
+                disclaimer: "Kurslar kun davomidagi o'rtacha narx asosida shakllantirilgan",
+                errorMsg: "Ma'lumotlarda xato ko'rsangiz bizga xabar bering!",
+                bestBuy: "Eng qimmat (Siz sotasiz)", bestSell: "Eng arzon (Siz olasiz)", avgSpread: "O'rtacha Spread (Farq)", spreadNote: "Mijoz foydasi uchun",
+                chartTrend: "Kurs Dinamikasi", chartComp: "Top 5", tableT: "Batafsil Jadval",
+                thBank: "Bank", thDate: "Sana", thBuy: "Sotib olish (Bank)", thSell: "Sotish (Bank)", thSpread: "Farq",
+                buy: "Sotib olish", sell: "Sotish",
+                calcT: "Foyda Kalkulyatori", calcSell: "Agar sotsangiz:", calcBuy: "Agar olsangiz:"
+            },
+            ru: {
+                brand: "Аналитика Курсов Валют", subtitle: "Мониторинг курсов валют коммерческих банков", source: "Источник: Официальные веб-сайты коммерческих банков",
+                filter: "Фильтр", currency: "Валюта", bank: "Банк", date: "Период", all: "— Все —",
+                reset: "Сброс", sloganT: "Финансовые Решения", 
+                disclaimer: "Курсы сформированы на основе средних цен за день",
+                errorMsg: "Если вы заметили ошибку в данных, сообщите нам!",
+                bestBuy: "Лучший курс (Продажа)", bestSell: "Лучший курс (Покупка)", avgSpread: "Средний Спред", spreadNote: "Выгода для клиента",
+                chartTrend: "Динамика Курса", chartComp: "Топ 5", tableT: "Подробная Таблица",
+                thBank: "Банк", thDate: "Дата", thBuy: "Покупка (Банком)", thSell: "Продажа (Банком)", thSpread: "Разница",
+                buy: "Покупка", sell: "Продажа",
+                calcT: "Калькулятор Выгоды", calcSell: "Если продадите:", calcBuy: "Если купите:"
+            },
+            en: {
+                brand: "Exchange Rate Analytics", subtitle: "Monitoring of exchange rates of commercial banks", source: "Source: Official websites of commercial banks",
+                filter: "Filter", currency: "Currency", bank: "Bank", date: "Period", all: "— All —",
+                reset: "Reset", sloganT: "Financial Solutions", 
+                disclaimer: "Rates are based on average daily prices",
+                errorMsg: "If you see an error in the data, let us know!",
+                bestBuy: "Best Rate (You Sell)", bestSell: "Best Rate (You Buy)", avgSpread: "Average Spread", spreadNote: "For client benefit",
+                chartTrend: "Rate Trend", chartComp: "Top 5", tableT: "Detailed Table",
+                thBank: "Bank", thDate: "Date", thBuy: "Buying (Bank)", thSell: "Selling (Bank)", thSpread: "Spread",
+                buy: "Buy", sell: "Sell",
+                calcT: "Profit Calculator", calcSell: "If you sell:", calcBuy: "If you buy:"
+            }
+        };
+
+        const slogans = {
+            uz: ["Eng yaxshi kurs — bu tejalgan mablag'", "Valyuta operatsiyalaringizda ishonchli yordamchi", "Har kuni yangilangan aniq ma'lumotlar", "Banklarni solishtiring va foyda qiling", "Aqlli moliyaviy qarorlar uchun"],
+            ru: ["Лучший курс — это сэкономленные средства", "Ваш надежный помощник в валютных операциях", "Точные данные, обновляемые ежедневно", "Сравнивайте банки и получайте выгоду", "Для умных финансовых решений"],
+            en: ["The best rate is money saved", "Your reliable assistant in currency operations", "Accurate data updated daily", "Compare banks and profit", "For smart financial decisions"]
+        };
+
+        let currentLang = 'uz';
+        let chartTrend = null;
+        let chartBar = null;
+        let sortDir = -1;
+        const fmtMoney = (n) => n ? n.toLocaleString() : '-';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.body.classList.add('dark-mode');
+            }
+            await fetchData();
+        });
+
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error("Network error");
+                const text = await response.text();
+                try { rawData = JSON.parse(text); } catch(e) { rawData = []; }
+                if (!Array.isArray(rawData)) rawData = [];
+                rawData.forEach(d => {
+                    d['Sotib olish'] = Number(d['Sotib olish']) || 0;
+                    d['Sotish'] = Number(d['Sotish']) || 0;
+                });
+                document.getElementById('loader').style.display = 'none';
+                initFilterOptions();
+                setDefaultDates(); 
+                renderApp();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loader').innerHTML = `<div style="text-align:center; color:var(--danger)">Xatolik yuz berdi.<br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">Qayta urinish</button></div>`;
+            }
+        }
+
+        function toggleTheme() { document.body.classList.toggle('dark-mode'); renderApp(); }
+        function setLang(l) {
+            currentLang = l;
+            ['uz','ru','en'].forEach(x => document.getElementById('btn-'+x).classList.remove('active-lang'));
+            document.getElementById('btn-'+l).classList.add('active-lang');
+            updateLangTexts();
+            renderApp();
+        }
+
+        function updateSlogan() {
+            const list = slogans[currentLang];
+            const rand = list[Math.floor(Math.random() * list.length)];
+            const el = document.getElementById('t-slogan-text');
+            el.classList.remove('slogan-animate');
+            void el.offsetWidth;
+            el.textContent = rand;
+            el.classList.add('slogan-animate');
+        }
+
+        function updateLangTexts() {
+            const t = i18n[currentLang];
+            const ids = ['t-brand','t-subtitle','t-source','t-filter','t-currency','t-bank','t-date','t-reset','t-slogan-title','t-disclaimer','t-error-msg','t-best-buy','t-best-sell','t-avg-spread','t-spread-note','t-chart-trend','t-chart-comp','t-table-title','t-calc-title','t-calc-sell','t-calc-buy'];
+            ids.forEach(id => {
+                if(document.getElementById(id)) document.getElementById(id).textContent = i18n[currentLang][id.replace('t-','').replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); })] || i18n[currentLang][id.replace('t-','')] || "";
+            });
+            document.querySelector('#filter-bank option[value=""]').textContent = t.all;
+        }
+
+        function initFilterOptions() {
+            const banks = [...new Set(rawData.map(d => d.Bank))].sort();
+            const sel = document.getElementById('filter-bank');
+            banks.forEach(b => sel.add(new Option(b, b)));
+        }
+
+        function setDefaultDates() {
+            const dates = rawData.map(d => d.Sana).sort();
+            if(dates.length > 0) {
+                const last = dates[dates.length - 1]; 
+                document.getElementById('filter-date-end').value = last;
+                // Default 1 Month
+                let d = new Date(last);
+                d.setMonth(d.getMonth() - 1);
+                document.getElementById('filter-date-start').value = d.toISOString().split('T')[0];
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-currency').value = 'USD';
+            document.getElementById('filter-bank').value = '';
+            setDefaultDates(); 
+            renderApp();
+        }
+
+        function getFilteredData() {
+            const curr = document.getElementById('filter-currency').value;
+            const bank = document.getElementById('filter-bank').value;
+            const start = document.getElementById('filter-date-start').value;
+            const end = document.getElementById('filter-date-end').value;
+            return rawData.filter(d => d.Valyuta === curr && (!bank || d.Bank === bank) && (!start || d.Sana >= start) && (!end || d.Sana <= end) && (d['Sotib olish'] > 0 || d['Sotish'] > 0));
+        }
+
+        function getLatestSnapshot() {
+            const curr = document.getElementById('filter-currency').value;
+            const relevant = rawData.filter(d => d.Valyuta === curr && (d['Sotib olish']>0 || d['Sotish']>0));
+            if(!relevant.length) return [];
+            const dates = relevant.map(d=>d.Sana).sort();
+            const lastDate = dates[dates.length-1];
+            return relevant.filter(d => d.Sana === lastDate);
+        }
+
+        function formatCalcInput(el) {
+            let raw = el.value.replace(/[^0-9]/g, ''); 
+            if(!raw) { el.value = ''; calculateProfit(); return; }
+            el.value = Number(raw).toLocaleString('ru-RU'); 
+            calculateProfit();
+        }
+
+        function calculateProfit() {
+            const valStr = document.getElementById('calc-input').value.replace(/\s/g, '');
+            const amount = parseFloat(valStr) || 0;
+            const snapshot = getLatestSnapshot();
+            const curr = document.getElementById('filter-currency').value;
+            
+            document.getElementById('calc-curr-label').innerText = curr;
+
+            if(!snapshot.length) {
+                document.getElementById('calc-res-sell').innerText = '-';
+                document.getElementById('calc-res-buy').innerText = '-';
+                return;
+            }
+
+            let maxBuy = 0, bankBuy = '-';
+            let minSell = Infinity, bankSell = '-';
+            let worstBuy = Infinity, worstSell = 0;
+
+            snapshot.forEach(d => {
+                if(d['Sotib olish'] > maxBuy) { maxBuy = d['Sotib olish']; bankBuy = d.Bank; }
+                if(d['Sotib olish'] < worstBuy && d['Sotib olish'] > 0) worstBuy = d['Sotib olish'];
+                if(d['Sotish'] < minSell && d['Sotish'] > 0) { minSell = d['Sotish']; bankSell = d.Bank; }
+                if(d['Sotish'] > worstSell) worstSell = d['Sotish'];
+            });
+            if(minSell === Infinity) minSell = 0; if(worstBuy === Infinity) worstBuy = 0;
+
+            document.getElementById('calc-res-sell').innerText = fmtMoney(amount * maxBuy) + " UZS";
+            document.getElementById('calc-bank-sell').innerText = bankBuy;
+            
+            const profitSell = (maxBuy - worstBuy) * amount;
+            document.getElementById('calc-profit-sell').innerText = profitSell > 0 ? `+${fmtMoney(profitSell)}` : '';
+
+            document.getElementById('calc-res-buy').innerText = fmtMoney(amount * minSell) + " UZS";
+            document.getElementById('calc-bank-buy').innerText = bankSell;
+
+            const profitBuy = (worstSell - minSell) * amount;
+            document.getElementById('calc-profit-buy').innerText = (profitBuy > 0 && minSell > 0) ? `+${fmtMoney(profitBuy)}` : '';
+        }
+
+        function renderApp() {
+            updateSlogan();
+            const subset = getFilteredData();
+            calculateKPIs(subset);
+            renderCharts(subset);
+            renderTable(subset);
+            calculateProfit(); 
+        }
+
+        function calculateKPIs(data) {
+            if(data.length === 0) { resetKPIs(); return; }
+            const dates = data.map(d=>d.Sana).sort();
+            const latest = dates[dates.length - 1];
+            const latestData = data.filter(d => d.Sana === latest);
+
+            let maxBuy = 0, maxBuyBank = '-';
+            let minSell = Infinity, minSellBank = '-';
+            let totalSpread = 0, count = 0;
+
+            latestData.forEach(d => {
+                if(d['Sotib olish'] > maxBuy) { maxBuy = d['Sotib olish']; maxBuyBank = d.Bank; }
+                if(d['Sotish'] < minSell && d['Sotish'] > 0) { minSell = d['Sotish']; minSellBank = d.Bank; }
+                if (d['Sotish'] > 0 && d['Sotib olish'] > 0) { totalSpread += (d['Sotish'] - d['Sotib olish']); count++; }
+            });
+            if(minSell === Infinity) minSell = 0;
+            const avgSpread = count ? Math.round(totalSpread / count) : 0;
+
+            document.getElementById('kpi-max-buy').innerText = fmtMoney(maxBuy);
+            document.getElementById('kpi-max-buy-bank').innerText = maxBuyBank;
+            document.getElementById('kpi-min-sell').innerText = fmtMoney(minSell);
+            document.getElementById('kpi-min-sell-bank').innerText = minSellBank;
+            document.getElementById('kpi-spread').innerText = fmtMoney(avgSpread);
+        }
+
+        function resetKPIs() {
+            document.getElementById('kpi-max-buy').innerText = '0';
+            document.getElementById('kpi-min-sell').innerText = '0';
+            document.getElementById('kpi-spread').innerText = '0';
+            document.getElementById('kpi-max-buy-bank').innerText = '-';
+            document.getElementById('kpi-min-sell-bank').innerText = '-';
+        }
+
+        function renderCharts(data) {
+            const isDark = document.body.classList.contains('dark-mode');
+            const colorTxt = isDark ? '#ccc' : '#555';
+            const curr = document.getElementById('filter-currency').value;
+            const bankFilter = document.getElementById('filter-bank').value;
+
+            // 1. TREND CHART (Logic Update: If filtered by bank -> Single Line)
+            if (chartTrend) chartTrend.destroy();
+            
+            const dateMap = {};
+            data.forEach(d => {
+                if(!dateMap[d.Sana]) dateMap[d.Sana] = { buySum:0, sellSum:0, count:0 };
+                if (d['Sotib olish'] > 0) dateMap[d.Sana].buySum += d['Sotib olish'];
+                if (d['Sotish'] > 0) dateMap[d.Sana].sellSum += d['Sotish'];
+                dateMap[d.Sana].count++;
+            });
+            const dates = Object.keys(dateMap).sort();
+            const avgsBuy = dates.map(d => dateMap[d].count ? Math.round(dateMap[d].buySum / dateMap[d].count) : 0);
+            const avgsSell = dates.map(d => dateMap[d].count ? Math.round(dateMap[d].sellSum / dateMap[d].count) : 0);
+
+            const ctxTrend = document.getElementById('chart-trend').getContext('2d');
+            chartTrend = new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        { label: i18n[currentLang].buy, data: avgsBuy, borderColor: '#10b981', backgroundColor:'transparent', tension: 0.2 },
+                        { label: i18n[currentLang].sell, data: avgsSell, borderColor: '#ef476f', backgroundColor:'transparent', tension: 0.2 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio:false,
+                    plugins: { legend:{position:'top'}, tooltip:{mode:'index', intersect:false} },
+                    scales: { x:{ticks:{color:colorTxt}}, y:{ticks:{color:colorTxt}} }
+                }
+            });
+
+            // 2. LOGIC FOR COMPARISON CHART: HIDE IF SINGLE BANK SELECTED
+            const cardComp = document.getElementById('card-chart-comp');
+            const rowContainer = document.getElementById('charts-row-container');
+
+            if (bankFilter) {
+                // If Single Bank selected -> Hide Comparison Chart, Expand Trend chart
+                cardComp.style.display = 'none';
+                rowContainer.style.gridTemplateColumns = '1fr';
+            } else {
+                // Show both
+                cardComp.style.display = 'block';
+                // Reset grid template (remove inline style to let CSS handle 1.2fr 0.8fr)
+                rowContainer.style.gridTemplateColumns = ''; 
+
+                if (chartBar) chartBar.destroy();
+                if(data.length === 0) return;
+                
+                const latestDate = dates[dates.length - 1];
+                const snapshot = data.filter(d => d.Sana === latestDate && d['Sotib olish'] > 0);
+                snapshot.sort((a,b) => b['Sotib olish'] - a['Sotib olish']);
+                const topSnapshot = snapshot.slice(0, 5); // Req 3: Top 5
+
+                const ctxBar = document.getElementById('chart-bar').getContext('2d');
+                chartBar = new Chart(ctxBar, {
+                    type: 'bar',
+                    data: {
+                        labels: topSnapshot.map(d => d.Bank),
+                        datasets: [
+                            { label: i18n[currentLang].buy, data: topSnapshot.map(d=>d['Sotib olish']), backgroundColor: '#10b981', borderRadius:4 },
+                            { label: i18n[currentLang].sell, data: topSnapshot.map(d=>d['Sotish']), backgroundColor: '#ef476f', borderRadius:4 }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true, maintainAspectRatio:false,
+                        plugins: { 
+                            legend:{position:'top'},
+                            datalabels: {
+                                display: true, color: isDark ? '#fff' : '#333',
+                                anchor: 'end', align: 'end', offset: 0, // Barside labels
+                                font: { weight: 'bold', size: 10 },
+                                formatter: (val) => fmtMoney(val)
+                            }
+                        },
+                        layout: { padding: { right: 40 } },
+                        scales: { x:{ticks:{color:colorTxt}, grace:'10%'}, y:{ticks:{color:colorTxt}} }
+                    },
+                    plugins: [ChartDataLabels]
+                });
+            }
+        }
+
+        function getTrendIcon(val, prevVal) {
+            if (!prevVal || prevVal === 0) return '';
+            const diff = val - prevVal;
+            if (diff === 0) return '';
+            // Logic Update: Higher price = Red (Bad), Lower = Green (Good)
+            const pClass = diff > 0 ? 'trend-up' : 'trend-down';
+            const icon = diff > 0 ? '▲' : '▼';
+            return `<span class="${pClass}">${icon} ${Math.abs(diff)}</span>`;
+        }
+
+        function renderTable(data) {
+            const table = document.getElementById('rates-table');
+            const t = i18n[currentLang];
+            
+            let maxBuy = 0, minSell = Infinity;
+            data.forEach(d => {
+                if(d['Sotib olish'] > maxBuy) maxBuy = d['Sotib olish'];
+                if(d['Sotish'] < minSell && d['Sotish'] > 0) minSell = d['Sotish'];
+            });
+
+            // Prev Lookup
+            const prevLookup = {};
+            const curr = document.getElementById('filter-currency').value;
+            const bankFilter = document.getElementById('filter-bank').value;
+            
+            // Get full relevant dataset to find true Previous Days
+            const allCurrData = rawData.filter(d => d.Valyuta === curr);
+            
+            allCurrData.forEach(d => {
+                const date = new Date(d.Sana);
+                date.setDate(date.getDate() + 1); 
+                const nextDayStr = date.toISOString().split('T')[0];
+                const key = `${d.Bank}_${nextDayStr}`;
+                prevLookup[key] = d;
+            });
+
+            let html = `<thead><tr>
+                <th onclick="sortTable('Bank')">${t.thBank} <i class="fa-solid fa-sort"></i></th>
+                <th onclick="sortTable('Sana')">${t.thDate} <i class="fa-solid fa-sort"></i></th>
+                <th onclick="sortTable('Sotib olish')">${t.thBuy} <i class="fa-solid fa-sort"></i></th>
+                <th onclick="sortTable('Sotish')">${t.thSell} <i class="fa-solid fa-sort"></i></th>
+                <th onclick="sortTable('Spread')">${t.thSpread} <i class="fa-solid fa-sort"></i></th>
+            </tr></thead><tbody>`;
+
+            data.sort((a,b) => {
+                if(a.Sana !== b.Sana) return b.Sana.localeCompare(a.Sana); 
+                return b['Sotib olish'] - a['Sotib olish'];
+            });
+
+            data.forEach(row => {
+                const spread = (row['Sotish'] > 0 && row['Sotib olish'] > 0) ? (row['Sotish'] - row['Sotib olish']) : 0;
+                const hlBuy = (row['Sotib olish'] === maxBuy) ? 'best-rate-cell' : '';
+                const hlSell = (row['Sotish'] === minSell) ? 'best-rate-cell' : ''; 
+
+                const prevKey = `${row.Bank}_${row.Sana}`;
+                const prevData = prevLookup[prevKey];
+                const trendBuy = prevData ? getTrendIcon(row['Sotib olish'], prevData['Sotib olish']) : '';
+                const trendSell = prevData ? getTrendIcon(row['Sotish'], prevData['Sotish']) : '';
+
+                html += `<tr>
+                    <td style="text-align:left; font-weight:500;">${row.Bank}</td>
+                    <td style="color:var(--text-secondary)">${row.Sana}</td>
+                    <td class="${hlBuy}">${fmtMoney(row['Sotib olish'])} ${trendBuy}</td>
+                    <td class="${hlSell}">${fmtMoney(row['Sotish'])} ${trendSell}</td>
+                    <td style="color:var(--orange); font-weight:bold;">${fmtMoney(spread)}</td>
+                </tr>`;
+            });
+            html += '</tbody>';
+            table.innerHTML = html;
+            table.dataset.rows = JSON.stringify(data);
+        }
+
+        window.sortTable = function(key) {
+            sortDir *= -1;
+            const table = document.getElementById('rates-table');
+            const rows = JSON.parse(table.dataset.rows);
+            rows.sort((a,b) => {
+                let va = (key === 'Spread') ? (a['Sotish'] - a['Sotib olish']) : a[key];
+                let vb = (key === 'Spread') ? (b['Sotish'] - b['Sotib olish']) : b[key];
+                if(typeof va === 'string') return sortDir * va.localeCompare(vb);
+                return sortDir * (va - vb);
+            });
+            renderTable(rows);
+        }
+
+        function exportTableToExcel() {
+            const table = document.getElementById('rates-table');
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, `Exchange_Rates_${document.getElementById('filter-currency').value}.xlsx`);
+        }
+    </script>
+</body>
+</html>
