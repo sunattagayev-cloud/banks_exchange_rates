@@ -176,6 +176,33 @@
         .disclaimer-box { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: var(--text-main); font-size: 0.85rem; padding: 10px 15px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         .disclaimer-box i { color: var(--orange); }
         .footer { text-align: center; padding: 20px; margin-top: 30px; color: var(--text-secondary); font-size: 0.85rem; border-top: 1px solid var(--border); }
+
+        /* ===== Dizayn yangilanishi ===== */
+        body { background: radial-gradient(1100px 500px at 0% -10%, rgba(99,102,241,.13), transparent 60%), radial-gradient(900px 450px at 100% 0%, rgba(245,158,11,.10), transparent 60%), var(--bg-body) !important; }
+        .glass-header { background: linear-gradient(135deg, #4361ee 0%, #7b2ff7 100%) !important; border: none !important; box-shadow: 0 12px 30px -14px rgba(67,97,238,.7); }
+        .glass-header, .glass-header h1, .glass-header h2, .glass-header p, .glass-header span, .glass-header i, .glass-header div { color: #fff !important; }
+        .glass-header .btn-icon { color: var(--text-main) !important; border-radius: 12px !important; }
+        .glass-header .active-lang { color: var(--primary) !important; }
+        .card { border: 1px solid var(--border) !important; border-radius: 20px !important; box-shadow: 0 10px 25px -15px rgba(15,23,42,.25) !important; transition: box-shadow .2s ease; }
+        .card:hover { box-shadow: 0 18px 36px -18px rgba(15,23,42,.35) !important; }
+        .stat-card { border-radius: 20px !important; position: relative; overflow: hidden; }
+        .stat-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(90deg, #10b981, #34d399); }
+        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #ef476f, #f472b6); }
+        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .stat-icon { border-radius: 14px !important; background: linear-gradient(135deg, rgba(67,97,238,.16), rgba(123,47,247,.16)) !important; }
+        .best-bank-badge { display: inline-block; border-radius: 999px !important; background: rgba(67,97,238,.12) !important; color: var(--primary) !important; padding: 2px 10px; font-weight: 600; }
+        .form-select, .form-input { border-radius: 12px !important; transition: box-shadow .2s, border-color .2s; }
+        .form-select:focus, .form-input:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 4px rgba(67,97,238,.15); }
+        .table-container { border-radius: 16px; overflow: auto; max-height: 520px; }
+        #rates-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        #rates-table th { position: sticky; top: 0; z-index: 1; background: var(--bg-card); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding: 12px 10px; border-bottom: 2px solid var(--border); cursor: pointer; }
+        #rates-table td { padding: 11px 10px; border-bottom: 1px solid var(--border); }
+        #rates-table tbody tr:nth-child(even) td { background: rgba(148,163,184,.06); }
+        #rates-table tbody tr:hover td { background: rgba(67,97,238,.08); }
+        .best-rate-cell { color: #059669 !important; font-weight: 700; }
+        .promo-card { background: linear-gradient(135deg, #7b2ff7, #f107a3) !important; color: #fff !important; }
+        #sync-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999; background: linear-gradient(90deg, #4361ee, #7b2ff7, #f59e0b, #4361ee); background-size: 200% 100%; animation: syncmove 1.2s linear infinite; }
+        @keyframes syncmove { from { background-position: 0 0; } to { background-position: -200% 0; } }
     </style>
 </head>
 <body>
@@ -196,7 +223,7 @@
                         <i class="fa-solid fa-circle-info"></i> <span id="t-subtitle">Tijorat banklari valyuta kurslari monitoringi</span>
                     </span>
                     <span class="source-badge" style="font-size: 0.7rem; opacity: 0.7;">
-                        <i class="fa-solid fa-link"></i> <span id="t-source">Manba: Tijorat banklari rasmiy web-saytlari</span>
+                        <i class="fa-solid fa-link"></i> <span id="t-source">Manba: uzrates.uz — tijorat banklari kurslari arxivi</span>
                     </span>
                 </div>
             </div>
@@ -218,7 +245,7 @@
                 <h3><i class="fa-solid fa-sliders"></i> <span id="t-filter">Filtrlash</span></h3>
                 
                 <label id="t-currency" style="font-size:0.85rem; color:var(--text-secondary)">Valyuta</label>
-                <select id="filter-currency" class="form-select" onchange="refreshAndRender()">
+                <select id="filter-currency" class="form-select" onchange="markTouched(); refreshAndRender()">
                     <option value="USD">USD - AQSH Dollar</option>
                     <option value="EUR">EUR - Yevro</option>
                     <option value="RUB">RUB - Rubl</option>
@@ -230,13 +257,13 @@
                 </select>
 
                 <label id="t-bank" style="font-size:0.85rem; color:var(--text-secondary)">Bank</label>
-                <select id="filter-bank" class="form-select" onchange="renderApp()">
+                <select id="filter-bank" class="form-select" onchange="markTouched(); renderApp()">
                     <option value="">— Barchasi —</option>
                 </select>
 
                 <label id="t-date" style="font-size:0.85rem; color:var(--text-secondary)">Davr</label>
-                <input type="date" id="filter-date-start" class="form-input" onchange="refreshAndRender()">
-                <input type="date" id="filter-date-end" class="form-input" onchange="refreshAndRender()">
+                <input type="date" id="filter-date-start" class="form-input" onchange="markTouched(); refreshAndRender()">
+                <input type="date" id="filter-date-end" class="form-input" onchange="markTouched(); refreshAndRender()">
 
                 <button class="btn-icon" style="width:100%; border-radius:8px;" onclick="resetFilters()">
                     <i class="fa-solid fa-rotate-right"></i> <span id="t-reset">Tozalash</span>
@@ -379,6 +406,7 @@
     </div>
 
     <script>
+        if (window.Chart) Chart.defaults.animation = false;
         const WORKER_URL = "https://uzrates-proxy.sunattagayev.workers.dev";   // <-- Cloudflare Worker manzilingiz
         let rawData = [];
         let currentLang = 'uz';
@@ -386,7 +414,7 @@
         // Translation Dictionary (Keys updated to match HTML IDs camelCased)
         const i18n = {
             uz: {
-                brand: "Valyuta Kurslari Tahlili", subtitle: "Tijorat banklari valyuta kurslari monitoringi", source: "Manba: Tijorat banklari rasmiy web-saytlari", 
+                brand: "Valyuta Kurslari Tahlili", subtitle: "Tijorat banklari valyuta kurslari monitoringi", source: "Manba: uzrates.uz — tijorat banklari kurslari arxivi", 
                 filter: "Filtrlash", currency: "Valyuta", bank: "Bank", date: "Davr", all: "— Barchasi —",
                 reset: "Tozalash", sloganT: "Moliyaviy Yechimlar", 
                 disclaimer: "Kurslar kun davomidagi o'rtacha narx asosida shakllantirilgan",
@@ -399,7 +427,7 @@
                 lastUpd: "Oxirgi yangilanish:"
             },
             ru: {
-                brand: "Аналитика Курсов Валют", subtitle: "Мониторинг курсов валют коммерческих банков", source: "Источник: Официальные веб-сайты коммерческих банков",
+                brand: "Аналитика Курсов Валют", subtitle: "Мониторинг курсов валют коммерческих банков", source: "Источник: uzrates.uz — архив курсов коммерческих банков",
                 filter: "Фильтр", currency: "Валюта", bank: "Банк", date: "Период", all: "— Все —",
                 reset: "Сброс", sloganT: "Финансовые Решения", 
                 disclaimer: "Курсы сформированы на основе средних цен за день",
@@ -412,7 +440,7 @@
                 lastUpd: "Обновлено:"
             },
             en: {
-                brand: "Exchange Rate Analytics", subtitle: "Monitoring of exchange rates of commercial banks", source: "Source: Official websites of commercial banks",
+                brand: "Exchange Rate Analytics", subtitle: "Monitoring of exchange rates of commercial banks", source: "Source: uzrates.uz — commercial banks' rate archive",
                 filter: "Filter", currency: "Currency", bank: "Bank", date: "Period", all: "— All —",
                 reset: "Reset", sloganT: "Financial Solutions", 
                 disclaimer: "Rates are based on average daily prices",
@@ -448,22 +476,44 @@
 // ================== MA'LUMOT: uzrates.uz (Worker orqali, real vaqt) ==================
         let banksList = [];
         let loadToken = 0;
-        const loadedKeys = new Set();   // "USD|2026-10" — shu valyuta uchun yuklangan oylar
-        const rawKeys = new Set();      // takroriy yozuvlarning oldini olish
+        const sessionOk = new Set();   // "USD|2026-10" — shu valyuta uchun yuklangan oylar
+        let filtersTouched = false;   // foydalanuvchi filtr tanlaganmi
         const pad2 = n => String(n).padStart(2, '0');
 
-        async function initApp() {
-            try {
-                const res = await fetch(`${WORKER_URL}/banks`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                banksList = await res.json();
-                initFilterOptions();
-                setDefaultDates();
-                await refreshAndRender();
-            } catch (error) {
-                console.error(error);
-                showLoadError();
+        // ================== KESH ==================
+        function cacheGet(k) { try { return JSON.parse(localStorage.getItem('uzr1|' + k)); } catch (e) { return null; } }
+        function evictOldest() {   // brauzer hajmi to'lsa, eng eski yozuvlarni o'chiradi
+            Object.keys(localStorage).filter(k => k.startsWith('uzr1|') && k !== 'uzr1|banks')
+                .map(k => { let t = 0; try { t = JSON.parse(localStorage.getItem(k)).t || 0; } catch (e) {} return [t, k]; })
+                .sort((a, b) => a[0] - b[0]).slice(0, 5).forEach(([, k]) => localStorage.removeItem(k));
+        }
+        function cacheSet(k, v) {
+            for (let i = 0; i < 6; i++) {
+                try { localStorage.setItem('uzr1|' + k, JSON.stringify(v)); return; }
+                catch (e) { evictOldest(); }
             }
+        }
+        async function fetchBanks() {
+            const res = await fetch(`${WORKER_URL}/banks`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const list = await res.json();
+            cacheSet('banks', { t: Date.now(), r: list });
+            return list;
+        }
+
+        async function initApp() {
+            setDefaultDates();
+            const cb = cacheGet('banks');
+            if (cb && cb.r && cb.r.length) { banksList = cb.r; initFilterOptions(); }
+            const stale = !cb || !cb.r || !cb.r.length || Date.now() - cb.t > 864e5;
+            const banksReq = stale ? fetchBanks().catch(err => { console.error(err); return null; }) : Promise.resolve(null);
+            if (!banksList.length) {                 // birinchi marta: ro'yxat shart
+                const list = await banksReq;
+                if (!list) return showLoadError();
+                banksList = list; initFilterOptions();
+            }
+            refreshAndRender();                      // keshdagi ma'lumot darhol chiziladi
+            banksReq.then(list => { if (list && list.join() !== banksList.join()) { banksList = list; initFilterOptions(); } });
         }
 
         function showLoadError() {
@@ -484,41 +534,66 @@
             return out;
         }
 
-        async function loadMonth(cur, y, m) {
-            const key = `${cur}|${y}-${pad2(m)}`;
-            if (loadedKeys.has(key)) return;
-            const res = await fetch(`${WORKER_URL}/rates?cur=${cur}&year=${y}&month=${m}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const { records, failed } = await res.json();
-            records.forEach(r => {
-                const k = `${r.Sana}|${r.Bank}|${r.Valyuta}`;
-                if (!rawKeys.has(k)) { rawKeys.add(k); rawData.push(r); }
-            });
-            if (failed.length) console.warn('Yuklanmadi:', failed.join(', '));
-            else loadedKeys.add(key);   // xatolik bo'lsa keyingi safar qayta so'raladi
+        const isRecent = (y, m) => { const n = new Date(); return (n.getFullYear() * 12 + n.getMonth() + 1) - (y * 12 + m) <= 1; };
+
+        function applyMonth(cur, ym, records) {
+            rawData = rawData.filter(d => !(d.Valyuta === cur && d.Sana.startsWith(ym)));
+            rawData.push(...records);
         }
 
-        // Valyuta yoki sana o'zgarganda kerakli oylarni yuklab, keyin chizadi
+        // Bitta oy: keshdan darhol; eskirgan bo'lsa fonda yangilanadi
+        async function loadMonth(cur, y, m) {
+            const ym = `${y}-${pad2(m)}`, key = `${cur}|${ym}`;
+            if (sessionOk.has(key)) return;
+            const cached = cacheGet(key);
+            if (cached) applyMonth(cur, ym, cached.r);
+            const ttl = isRecent(y, m) ? 10 * 60e3 : 7 * 864e5;
+            if (cached && Date.now() - cached.t < ttl) { sessionOk.add(key); return; }
+            try {
+                const res = await fetch(`${WORKER_URL}/rates?cur=${cur}&year=${y}&month=${m}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const { records, failed } = await res.json();
+                if (failed.length) { console.warn('Yuklanmadi:', failed.join(', ')); if (!cached) applyMonth(cur, ym, records); return; }
+                applyMonth(cur, ym, records);
+                cacheSet(key, { t: Date.now(), r: records });
+                sessionOk.add(key);
+            } catch (err) {
+                if (!cached) throw err;      // keshda ham yo'q bo'lsa — xatolik
+                console.warn(err);           // eski keshli ma'lumot bilan davom etamiz
+            }
+        }
+
+        function setSync(on) {
+            let bar = document.getElementById('sync-bar');
+            if (!bar) { bar = document.createElement('div'); bar.id = 'sync-bar'; document.body.appendChild(bar); }
+            bar.style.display = on ? 'block' : 'none';
+        }
+
         async function refreshAndRender() {
             const token = ++loadToken;
             const cur = document.getElementById('filter-currency').value;
             const s = document.getElementById('filter-date-start').value;
             const e = document.getElementById('filter-date-end').value;
             const loader = document.getElementById('loader');
-            const missing = (s && e ? monthsBetween(s, e) : [])
-                .filter(([y, m]) => !loadedKeys.has(`${cur}|${y}-${pad2(m)}`));
-            if (missing.length) loader.style.display = '';
+            const months = s && e ? monthsBetween(s, e) : [];
+            const pending = months.some(([y, m]) => !sessionOk.has(`${cur}|${y}-${pad2(m)}`));
+            if (rawData.length) renderApp(); else loader.style.display = '';   // keshdagi ma'lumot darhol chiziladi
+            setSync(pending);
             try {
-                await Promise.all(missing.map(([y, m]) => loadMonth(cur, y, m)));
+                await Promise.all(months.map(([y, m]) => loadMonth(cur, y, m)));
             } catch (error) {
                 console.error(error);
-                if (token === loadToken) showLoadError();
+                if (token === loadToken && !rawData.length) showLoadError();
+                setSync(false);
                 return;
             }
-            if (token !== loadToken) return;   // yangiroq so'rov ustun turadi
+            if (token !== loadToken) return;
+            setSync(false);
             loader.style.display = 'none';
             renderApp();
         }
+
+
 
                 function toggleTheme() { document.body.classList.toggle('dark-mode'); renderApp(); }
         function setLang(l) {
@@ -572,6 +647,7 @@
         function initFilterOptions() {
             const banks = [...banksList].sort();
             const sel = document.getElementById('filter-bank');
+            sel.length = 1;
             banks.forEach(b => sel.add(new Option(b, b)));
         }
 
@@ -585,10 +661,20 @@
         }
 
                 function resetFilters() {
+            filtersTouched = false;
             document.getElementById('filter-currency').value = 'USD';
             document.getElementById('filter-bank').value = '';
             setDefaultDates();
             refreshAndRender();
+        }
+
+        function markTouched() { filtersTouched = true; }
+
+        // Har bankning eng oxirgi (sanasi eng katta) yozuvi
+        function latestPerBank(data) {
+            const best = new Map();
+            data.forEach(d => { const c = best.get(d.Bank); if (!c || d.Sana > c.Sana) best.set(d.Bank, d); });
+            return [...best.values()];
         }
 
         function getFilteredData() {
@@ -607,9 +693,7 @@
             const subset = getFilteredData();
             if(!subset.length) return [];
             
-            const dates = subset.map(d=>d.Sana).sort();
-            const lastDate = dates[dates.length-1];
-            return subset.filter(d => d.Sana === lastDate);
+            return latestPerBank(subset);
         }
 
         function formatCalcInput(el) {
@@ -663,7 +747,7 @@
             const subset = getFilteredData();
             calculateKPIs(subset);
             renderCharts(subset);
-            renderTable(subset);
+            renderTable(filtersTouched ? subset : latestPerBank(subset));
             calculateProfit(); 
             setLastUpdate();
         }
@@ -672,7 +756,7 @@
             if(data.length === 0) { resetKPIs(); return; }
             const dates = data.map(d=>d.Sana).sort();
             const latest = dates[dates.length - 1];
-            const latestData = data.filter(d => d.Sana === latest);
+            const latestData = latestPerBank(data);
 
             let maxBuy = 0, maxBuyBank = '-';
             let minSell = Infinity, minSellBank = '-';
@@ -726,8 +810,8 @@
                 data: {
                     labels: dates,
                     datasets: [
-                        { label: i18n[currentLang].buy, data: avgsBuy, borderColor: '#10b981', backgroundColor:'transparent', tension: 0.2 },
-                        { label: i18n[currentLang].sell, data: avgsSell, borderColor: '#ef476f', backgroundColor:'transparent', tension: 0.2 }
+                        { label: i18n[currentLang].buy, data: avgsBuy, borderColor: '#10b981', backgroundColor:'rgba(16,185,129,0.14)', fill: true, borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 5 },
+                        { label: i18n[currentLang].sell, data: avgsSell, borderColor: '#ef476f', backgroundColor:'rgba(239,71,111,0.12)', fill: true, borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 5 }
                     ]
                 },
                 options: {
@@ -751,8 +835,7 @@
                 if (chartBar) chartBar.destroy();
                 if(data.length === 0) return;
                 const dates = data.map(d=>d.Sana).sort();
-                const latestDate = dates[dates.length - 1];
-                const snapshot = data.filter(d => d.Sana === latestDate && d['Sotib olish'] > 0);
+                const snapshot = latestPerBank(data).filter(d => d['Sotib olish'] > 0);
                 snapshot.sort((a,b) => b['Sotib olish'] - a['Sotib olish']);
                 const topSnapshot = snapshot.slice(0, 5);
 
@@ -762,8 +845,8 @@
                     data: {
                         labels: topSnapshot.map(d => d.Bank),
                         datasets: [
-                            { label: i18n[currentLang].buy, data: topSnapshot.map(d=>d['Sotib olish']), backgroundColor: '#10b981', borderRadius:4 },
-                            { label: i18n[currentLang].sell, data: topSnapshot.map(d=>d['Sotish']), backgroundColor: '#ef476f', borderRadius:4 }
+                            { label: i18n[currentLang].buy, data: topSnapshot.map(d=>d['Sotib olish']), backgroundColor: '#10b981', borderRadius:6 },
+                            { label: i18n[currentLang].sell, data: topSnapshot.map(d=>d['Sotish']), backgroundColor: '#ef476f', borderRadius:6 }
                         ]
                     },
                     options: {
