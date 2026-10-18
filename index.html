@@ -218,7 +218,7 @@
                 <h3><i class="fa-solid fa-sliders"></i> <span id="t-filter">Filtrlash</span></h3>
                 
                 <label id="t-currency" style="font-size:0.85rem; color:var(--text-secondary)">Valyuta</label>
-                <select id="filter-currency" class="form-select" onchange="renderApp()">
+                <select id="filter-currency" class="form-select" onchange="refreshAndRender()">
                     <option value="USD">USD - AQSH Dollar</option>
                     <option value="EUR">EUR - Yevro</option>
                     <option value="RUB">RUB - Rubl</option>
@@ -235,8 +235,8 @@
                 </select>
 
                 <label id="t-date" style="font-size:0.85rem; color:var(--text-secondary)">Davr</label>
-                <input type="date" id="filter-date-start" class="form-input" onchange="renderApp()">
-                <input type="date" id="filter-date-end" class="form-input" onchange="renderApp()">
+                <input type="date" id="filter-date-start" class="form-input" onchange="refreshAndRender()">
+                <input type="date" id="filter-date-end" class="form-input" onchange="refreshAndRender()">
 
                 <button class="btn-icon" style="width:100%; border-radius:8px;" onclick="resetFilters()">
                     <i class="fa-solid fa-rotate-right"></i> <span id="t-reset">Tozalash</span>
@@ -379,7 +379,7 @@
     </div>
 
     <script>
-        const API_URL = "https://raw.githubusercontent.com/sunattagayev-cloud/banks_exchange_rates/refs/heads/main/banks_rates.json";
+        const WORKER_URL = "https://uzrates-proxy.YOUR-SUBDOMAIN.workers.dev";   // <-- Cloudflare Worker manzilingiz
         let rawData = [];
         let currentLang = 'uz';
         
@@ -442,31 +442,85 @@
             if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 document.body.classList.add('dark-mode');
             }
-            await fetchData();
+            await initApp();
         });
 
-        async function fetchData() {
+// ================== MA'LUMOT: uzrates.uz (Worker orqali, real vaqt) ==================
+        let banksList = [];
+        let loadToken = 0;
+        const loadedKeys = new Set();   // "USD|2026-10" — shu valyuta uchun yuklangan oylar
+        const rawKeys = new Set();      // takroriy yozuvlarning oldini olish
+        const pad2 = n => String(n).padStart(2, '0');
+
+        async function initApp() {
             try {
-                const response = await fetch(API_URL);
-                if (!response.ok) throw new Error("Network error");
-                const text = await response.text();
-                try { rawData = JSON.parse(text); } catch(e) { rawData = []; }
-                if (!Array.isArray(rawData)) rawData = [];
-                rawData.forEach(d => {
-                    d['Sotib olish'] = Number(d['Sotib olish']) || 0;
-                    d['Sotish'] = Number(d['Sotish']) || 0;
-                });
-                document.getElementById('loader').style.display = 'none';
+                const res = await fetch(`${WORKER_URL}/banks`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                banksList = await res.json();
                 initFilterOptions();
-                setDefaultDates(); 
-                renderApp();
+                setDefaultDates();
+                await refreshAndRender();
             } catch (error) {
                 console.error(error);
-                document.getElementById('loader').innerHTML = `<div style="text-align:center; color:var(--danger)">Xatolik yuz berdi.<br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">Qayta urinish</button></div>`;
+                showLoadError();
             }
         }
 
-        function toggleTheme() { document.body.classList.toggle('dark-mode'); renderApp(); }
+        function showLoadError() {
+            const loader = document.getElementById('loader');
+            loader.innerHTML = `<div style="text-align:center; color:var(--danger)">Ma'lumotni olishda xatolik.<br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">Qayta urinish</button></div>`;
+            loader.style.display = '';
+        }
+
+        // startISO..endISO oralig'idagi [yil, oy] juftliklari
+        function monthsBetween(startISO, endISO) {
+            const out = [];
+            let [y, m] = startISO.split('-').map(Number);
+            const [ey, em] = endISO.split('-').map(Number);
+            while (y < ey || (y === ey && m <= em)) {
+                out.push([y, m]);
+                if (++m === 13) { m = 1; y++; }
+            }
+            return out;
+        }
+
+        async function loadMonth(cur, y, m) {
+            const key = `${cur}|${y}-${pad2(m)}`;
+            if (loadedKeys.has(key)) return;
+            const res = await fetch(`${WORKER_URL}/rates?cur=${cur}&year=${y}&month=${m}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const { records, failed } = await res.json();
+            records.forEach(r => {
+                const k = `${r.Sana}|${r.Bank}|${r.Valyuta}`;
+                if (!rawKeys.has(k)) { rawKeys.add(k); rawData.push(r); }
+            });
+            if (failed.length) console.warn('Yuklanmadi:', failed.join(', '));
+            else loadedKeys.add(key);   // xatolik bo'lsa keyingi safar qayta so'raladi
+        }
+
+        // Valyuta yoki sana o'zgarganda kerakli oylarni yuklab, keyin chizadi
+        async function refreshAndRender() {
+            const token = ++loadToken;
+            const cur = document.getElementById('filter-currency').value;
+            const s = document.getElementById('filter-date-start').value;
+            const e = document.getElementById('filter-date-end').value;
+            const loader = document.getElementById('loader');
+            const missing = (s && e ? monthsBetween(s, e) : [])
+                .filter(([y, m]) => !loadedKeys.has(`${cur}|${y}-${pad2(m)}`));
+            if (missing.length) loader.style.display = '';
+            try {
+                await Promise.all(missing.map(([y, m]) => loadMonth(cur, y, m)));
+            } catch (error) {
+                console.error(error);
+                if (token === loadToken) showLoadError();
+                return;
+            }
+            if (token !== loadToken) return;   // yangiroq so'rov ustun turadi
+            loader.style.display = 'none';
+            renderApp();
+        }
+
+                function toggleTheme() { document.body.classList.toggle('dark-mode'); renderApp(); }
         function setLang(l) {
             currentLang = l;
             ['uz','ru','en'].forEach(x => document.getElementById('btn-'+x).classList.remove('active-lang'));
@@ -516,27 +570,25 @@
         }
 
         function initFilterOptions() {
-            const banks = [...new Set(rawData.map(d => d.Bank))].sort();
+            const banks = [...banksList].sort();
             const sel = document.getElementById('filter-bank');
             banks.forEach(b => sel.add(new Option(b, b)));
         }
 
         function setDefaultDates() {
-            const dates = rawData.map(d => d.Sana).sort();
-            if(dates.length > 0) {
-                const last = dates[dates.length - 1]; 
-                document.getElementById('filter-date-end').value = last;
-                let d = new Date(last);
-                d.setMonth(d.getMonth() - 1);
-                document.getElementById('filter-date-start').value = d.toISOString().split('T')[0];
-            }
+            const now = new Date();
+            const start = new Date(now);
+            start.setMonth(start.getMonth() - 1);
+            const iso = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+            document.getElementById('filter-date-end').value = iso(now);
+            document.getElementById('filter-date-start').value = iso(start);
         }
 
-        function resetFilters() {
+                function resetFilters() {
             document.getElementById('filter-currency').value = 'USD';
             document.getElementById('filter-bank').value = '';
-            setDefaultDates(); 
-            renderApp();
+            setDefaultDates();
+            refreshAndRender();
         }
 
         function getFilteredData() {
